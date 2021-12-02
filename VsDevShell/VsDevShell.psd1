@@ -91,7 +91,7 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = 'VsDevShell', 'MSVC', 'Visual Studio', 'Command Prompt', "Developer Shell"
+        Tags = 'VsDevShell', 'Visual', 'Studio', 'Developer', 'Shell'
 
         # A URL to the license for this module.
         LicenseUri = 'https://github.com/awakecoding/VsDevShell-ps/blob/master/LICENSE'
