@@ -8,7 +8,7 @@
 RootModule = 'VsDevShell.psm1'
 
 # Version number of this module.
-ModuleVersion = '2020.3.1'
+ModuleVersion = '2021.3.0'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Desktop', 'Core'
@@ -65,10 +65,7 @@ CLRVersion = '4.0'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @(
-    'Get-VsDevPath',
-    'Enter-VsDevShell'
-    )
+FunctionsToExport = @('Enter-VsDevShell')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
@@ -94,10 +91,10 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        Tags = 'VsDevShell', 'MSVC', 'Visual Studio', 'Windows', 'macOS', 'Linux'
+        Tags = 'VsDevShell', 'MSVC', 'Visual Studio', 'Command Prompt', "Developer Shell"
 
         # A URL to the license for this module.
-        LicenseUri = 'https://github.com/awakecoding/VsDevShell-ps/blob/master/LICENSE-MIT'
+        LicenseUri = 'https://github.com/awakecoding/VsDevShell-ps/blob/master/LICENSE'
 
         # A URL to the main website for this project.
         ProjectUri = 'https://github.com/awakecoding/VsDevShell-ps'
