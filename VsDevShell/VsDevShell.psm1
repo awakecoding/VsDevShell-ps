@@ -117,3 +117,109 @@ function Enter-VsDevShell
         }
     }
 }
+
+function Get-VsDevEnv
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0)]
+        [ValidateSet('x86','x64','arm','arm64')]
+        [string] $Arch = "x64",
+        [ValidateSet('x86','x64')]
+        [string] $HostArch = "x64",
+        [ValidateSet('Desktop','UWP')]
+        [string] $AppPlatform = "Desktop",
+        [string] $WinSdk,
+        [switch] $NoExt,
+        [switch] $NoLogo,
+
+        [string] $VsInstallPath
+    )
+
+    if ([string]::IsNullOrEmpty($VsInstallPath)) {
+        $VsInstallPath = Get-VsInstallPath
+    }
+
+    if (-Not (Test-Path -Path $VsInstallPath -PathType Container)) {
+        throw [System.IO.FileNotFoundException] "$VsInstallPath not found."
+    }
+
+    $VsDevCmdPath = Get-VsDevCmdPath -VsInstallPath $VsInstallPath
+
+    if (-Not (Test-Path -Path $VsDevCmdPath -PathType Leaf)) {
+        throw [System.IO.FileNotFoundException] "$VsDevCmdPath not found."
+    }
+
+    $Arch = $Arch.ToLower()
+    $HostArch = $HostArch.ToLower()
+
+    $VsCmdArgs = "-arch=$Arch"
+    $VsCmdArgs += " -host_arch=$HostArch"
+
+    if (-Not [string]::IsNullOrEmpty($WinSdk)) {
+        $VsCmdArgs += " -winsdk=$WinSdk"
+    }
+
+    if ($NoExt) {
+        $VsCmdArgs += " -no_ext"
+    }
+
+    if ($NoLogo) {
+        $VsCmdArgs += " -no_logo"
+    }
+
+    $Env:VSCMD_SKIP_SENDTELEMETRY = "1"
+    $Env:VSCMD_BANNER_SHELL_NAME_ALT = "$Arch Developer Shell"
+
+    $VsCmdOutput = & "${Env:COMSPEC}" "/c `"`"$VsDevCmdPath`" $VsCmdArgs && set"
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to execute VsDevCmd.bat"
+    }
+
+    $PreEnv = [ordered]@{}
+    (gci env:) | ForEach-Object {
+        $PreEnv.Add($_.Name, $_.Value)
+    }
+
+    $VsDevEnv = [ordered]@{}
+    foreach ($VsCmdLine in $VsCmdOutput) {
+        if ($VsCmdLine -Match '(.*)=(.*)') {
+            $Name = $Matches[1]
+            $Value = $Matches[2]
+            if ($PreEnv[$Name] -ne $Value) {
+                $VsDevEnv.Add($Name, $Value)
+            }
+        }
+    }
+
+    $VsDevEnv
+}
+
+function Enter-VsDevShell
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Position=0)]
+        [ValidateSet('x86','x64','arm','arm64')]
+        [string] $Arch = "x64",
+        [ValidateSet('x86','x64')]
+        [string] $HostArch = "x64",
+        [ValidateSet('Desktop','UWP')]
+        [string] $AppPlatform = "Desktop",
+        [string] $WinSdk,
+        [switch] $NoExt,
+        [switch] $NoLogo,
+
+        [string] $VsInstallPath
+    )
+
+    $VsDevEnv = Get-VsDevEnv -Arch:$Arch -HostArch:$HostArch `
+        -AppPlatform:$AppPlatform -WinSdk:$WinSdk `
+        -NoExt:$NoExt -NoLogo:$NoLogo `
+        -VsInstallPath:$VsInstallPath
+
+    $VsDevEnv.GetEnumerator() | ForEach-Object {
+        [System.Environment]::SetEnvironmentVariable($_.Key, $_.Value)
+    }
+}
