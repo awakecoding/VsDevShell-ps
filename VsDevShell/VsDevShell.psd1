@@ -8,7 +8,7 @@
 RootModule = 'VsDevShell.psm1'
 
 # Version number of this module.
-ModuleVersion = '2023.2.0'
+ModuleVersion = '2024.1.0'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Desktop', 'Core'

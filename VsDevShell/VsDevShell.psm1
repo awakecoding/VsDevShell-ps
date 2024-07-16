@@ -48,76 +48,6 @@ function Get-VsDevCmdPath
     $VsDevCmdPath
 }
 
-function Enter-VsDevShell
-{
-    [CmdletBinding()]
-    param(
-        [Parameter(Position=0)]
-        [ValidateSet('x86','x64','arm','arm64')]
-        [string] $Arch = "x64",
-        [ValidateSet('x86','x64')]
-        [string] $HostArch = "x64",
-        [ValidateSet('Desktop','UWP')]
-        [string] $AppPlatform = "Desktop",
-        [string] $WinSdk,
-        [switch] $NoExt,
-        [switch] $NoLogo,
-
-        [string] $VsInstallPath
-    )
-
-    if ([string]::IsNullOrEmpty($VsInstallPath)) {
-        $VsInstallPath = Get-VsInstallPath
-    }
-
-    if (-Not (Test-Path -Path $VsInstallPath -PathType Container)) {
-        throw [System.IO.FileNotFoundException] "$VsInstallPath not found."
-    }
-
-    $VsDevCmdPath = Get-VsDevCmdPath -VsInstallPath $VsInstallPath
-
-    if (-Not (Test-Path -Path $VsDevCmdPath -PathType Leaf)) {
-        throw [System.IO.FileNotFoundException] "$VsDevCmdPath not found."
-    }
-
-    $Arch = $Arch.ToLower()
-    $HostArch = $HostArch.ToLower()
-
-    $VsCmdArgs = "-arch=$Arch"
-    $VsCmdArgs += " -host_arch=$HostArch"
-
-    if (-Not [string]::IsNullOrEmpty($WinSdk)) {
-        $VsCmdArgs += " -winsdk=$WinSdk"
-    }
-
-    if ($NoExt) {
-        $VsCmdArgs += " -no_ext"
-    }
-
-    if ($NoLogo) {
-        $VsCmdArgs += " -no_logo"
-    }
-
-    $Env:VSCMD_SKIP_SENDTELEMETRY = "1"
-    $Env:VSCMD_BANNER_SHELL_NAME_ALT = "$Arch Developer Shell"
-
-    $VsCmdOutput = & "${Env:COMSPEC}" "/c `"`"$VsDevCmdPath`" $VsCmdArgs && set"
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to execute VsDevCmd.bat"
-    }
-
-    foreach ($VsCmdLine in $VsCmdOutput) {
-        if ($VsCmdLine -Match '(.*)=(.*)') {
-            $Name = $Matches[1]
-            $Value = $Matches[2]
-            [System.Environment]::SetEnvironmentVariable($Name, $Value)
-        } else {
-            Write-Host $VsCmdLine
-        }
-    }
-}
-
 function Get-VsDevEnv
 {
     [CmdletBinding()]
@@ -132,7 +62,6 @@ function Get-VsDevEnv
         [string] $WinSdk,
         [switch] $NoExt,
         [switch] $NoLogo,
-
         [string] $VsInstallPath
     )
 
@@ -171,22 +100,35 @@ function Get-VsDevEnv
     $Env:VSCMD_SKIP_SENDTELEMETRY = "1"
     $Env:VSCMD_BANNER_SHELL_NAME_ALT = "$Arch Developer Shell"
 
-    $VsCmdOutput = & "${Env:COMSPEC}" "/c `"`"$VsDevCmdPath`" $VsCmdArgs && set"
+    $processStartInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $processStartInfo.FileName = "${Env:COMSPEC}"
+    $processStartInfo.Arguments = "/c `"`"$VsDevCmdPath`" $VsCmdArgs && set`""
+    $processStartInfo.WorkingDirectory = Split-Path $VsDevCmdPath
+    $processStartInfo.RedirectStandardOutput = $true
+    $processStartInfo.UseShellExecute = $false
+    $processStartInfo.CreateNoWindow = $true
 
-    if ($LASTEXITCODE -ne 0) {
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $processStartInfo
+    $process.Start() | Out-Null
+    $VsCmdOutput = $process.StandardOutput.ReadToEnd()
+    $process.WaitForExit()
+
+    $VsCmdOutput = $VsCmdOutput -split "`r`n"
+
+    if ($process.ExitCode -ne 0) {
         throw "Failed to execute VsDevCmd.bat"
     }
 
     $PreEnv = [ordered]@{}
-    (gci env:) | ForEach-Object {
+    (Get-ChildItem env:) | ForEach-Object {
         $PreEnv.Add($_.Name, $_.Value)
     }
 
     $VsDevEnv = [ordered]@{}
     foreach ($VsCmdLine in $VsCmdOutput) {
-        if ($VsCmdLine -Match '(.*)=(.*)') {
-            $Name = $Matches[1]
-            $Value = $Matches[2]
+        if ($VsCmdLine.Contains('=')) {
+            $Name, $Value = $VsCmdLine -split '=', 2
             if ($PreEnv[$Name] -ne $Value) {
                 $VsDevEnv.Add($Name, $Value)
             }
@@ -210,7 +152,6 @@ function Enter-VsDevShell
         [string] $WinSdk,
         [switch] $NoExt,
         [switch] $NoLogo,
-
         [string] $VsInstallPath
     )
 
