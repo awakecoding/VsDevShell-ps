@@ -8,7 +8,7 @@ function Get-VsWherePath
     $VsWhereCommand = Get-Command -Name vswhere -CommandType Application -ErrorAction SilentlyContinue
 
     if ($VsWhereCommand) {
-        $VsWherePath = $VswhereCommand.Source
+        $VsWherePath = $VswhereCommand[0].Source
     } else {
         $VsWherePath = Join-Path ${Env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
     }
